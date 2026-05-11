@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUXDiscover - Tactical Interface</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Puter.js for AI -->
+    <script src="https://js.puter.com/v2/"></script>
+    <!-- jsQR for QR Scanning -->
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617; 
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Tactical Glassmorphism */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            border-radius: 1rem;
+            color: white;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .glass-panel:hover {
+            background: rgba(15, 23, 42, 0.85);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .text-glow {
+            text-shadow: 0 0 10px rgba(59, 130, 246, 0.5), 0 0 20px rgba(0, 0, 0, 0.8);
+        }
+
+        .custom-scroll::-webkit-scrollbar { width: 4px; }
+        .custom-scroll::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); }
+        .custom-scroll::-webkit-scrollbar-thumb { background: rgba(59, 130, 246, 0.5); border-radius: 10px; }
+
+        .fade-out {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.8s ease-out, visibility 0.8s ease-out;
+        }
+
+        #camera-feed {
+            filter: contrast(1.1) brightness(0.9);
+            background: #000;
+            transition: transform 0.2s ease, opacity 0.5s ease;
+            transform-origin: center;
+        }
+
+        #camera-feed.hidden-stream {
+            opacity: 0;
+        }
+
+        .rec-active {
+            animation: pulse-red 1.5s infinite;
+            background: rgba(239, 68, 68, 0.8) !important;
+            border-color: #ef4444 !important;
+        }
+
+        @keyframes pulse-red {
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            70% { box-shadow: 0 0 0 15px rgba(239, 68, 68, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+
+        .scanlines {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            background-size: 100% 3px, 2px 100%;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        #privacy-overlay {
+            position: absolute;
+            inset: 0;
+            background: #020617;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 2;
+        }
+
+        #privacy-overlay.active {
+            display: flex;
+        }
+
+        .thinking-pulse {
+            animation: thinking 2s infinite;
+        }
+
+        @keyframes thinking {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .mic-listening {
+            background: #ef4444 !important;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.6) !important;
+        }
+
+        #qr-box {
+            position: absolute;
+            border: 2px solid #3b82f6;
+            background: rgba(59, 130, 246, 0.1);
+            pointer-events: none;
+            display: none;
+            z-index: 30;
+            box-shadow: 0 0 20px #3b82f6;
+        }
+
+        #capture-status {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            pointer-events: none;
+            display: none;
+        }
+        
+        #countdown-overlay {
+            position: absolute;
+            top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 8rem; font-weight: 800; font-family: 'JetBrains Mono';
+            color: white; text-shadow: 0 0 30px rgba(59, 130, 246, 0.8);
+            z-index: 200; pointer-events: none; display: none;
+        }
+
+        .btn-blue { border-color: rgba(59, 130, 246, 0.5); color: #3b82f6; }
+        .btn-blue:hover { background: rgba(15, 23, 42, 0.9); border-color: #3b82f6; }
+        .btn-purple { border-color: rgba(168, 85, 247, 0.5); color: #a855f7; }
+        .btn-purple:hover { background: rgba(15, 23, 42, 0.9); border-color: #a855f7; }
+
+        #vault-panel {
+            position: fixed;
+            inset: 0;
+            z-index: 150;
+            background: rgba(2, 6, 23, 0.95);
+            backdrop-blur: 20px;
+            display: none;
+            flex-direction: column;
+            padding: 2rem;
+        }
+
+        .vault-item {
+            position: relative;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            aspect-ratio: 16 / 9;
+            background: #000;
+        }
+
+        .vault-item img, .vault-item video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .vault-item:hover .vault-controls {
+            opacity: 1;
+        }
+
+        .vault-controls {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+    </style>
+</head>
+<body class="text-white relative select-none">
+    <div class="scanlines"></div>
+
+    <div id="flash-effect" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-150 z-50"></div>
+    <div id="countdown-overlay"></div>
+
+    <!-- Capture Status Indicator -->
+    <div id="capture-status" class="glass-panel p-4 flex items-center gap-4 border-red-500/50">
+        <div class="w-3 h-3 bg-red-500 rounded-full animate-ping"></div>
+        <span class="font-mono text-xs font-bold tracking-[0.3em] uppercase text-red-500">Processing Link...</span>
+    </div>
+
+    <!-- Live Camera Feed -->
+    <video id="camera-feed" class="absolute top-0 left-0 w-full h-full object-cover z-0" autoplay playsinline muted></video>
+
+    <div id="qr-box"></div>
+
+    <div id="privacy-overlay">
+        <div class="w-24 h-24 border-2 border-slate-800 rounded-full flex items-center justify-center mb-4 opacity-20">
+            <i class="fas fa-eye-slash text-4xl"></i>
+        </div>
+        <div class="text-[10px] tracking-[0.5em] text-slate-600 font-bold uppercase">Optic Input Encrypted</div>
+    </div>
+
+    <!-- Start Screen (DUAL BUTTONS) -->
+    <div id="start-screen" class="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-3xl px-6">
+        <div class="text-center max-w-2xl p-10 glass-panel border-blue-500/30">
+            <div class="mb-6 relative inline-block">
+                <i class="fas fa-camera-retro text-7xl text-blue-500 drop-shadow-[0_0_15px_rgba(59,130,246,0.6)]"></i>
+                <div class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full animate-ping"></div>
+            </div>
+            <h1 class="text-4xl font-bold mb-2 tracking-tighter uppercase italic text-glow text-blue-400">LUXDiscover</h1>
+            <p class="text-slate-400 mb-10 text-sm leading-relaxed font-mono">
+                [SYSTEM INITIALIZATION]<br>
+                Select Uplink Protocol to access secure hardware.
+            </p>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                <!-- Blue Button: Standard Uplink -->
+                <button id="start-standard-btn" class="p-6 glass-panel btn-blue transition-all group text-left flex flex-col justify-between h-full cursor-pointer">
+                    <div>
+                        <i class="fas fa-database text-3xl mb-4 group-hover:scale-110 transition-transform"></i>
+                        <div class="text-lg font-bold uppercase text-white mb-2 font-mono">Standard Uplink</div>
+                        <div class="text-[10px] opacity-60 leading-relaxed font-mono uppercase">
+                            Initializes in current tab<br>
+                            Enables Neural Vault Storage (Local)<br>
+                            Full gallery persistence active<br>
+                            <span class="text-red-400 font-bold">[DISCLAIMER: CLOUDFLARE TRACKING ACTIVE]</span>
+                        </div>
+                    </div>
+                    <div class="mt-8 py-3 bg-blue-500/20 border border-blue-500/50 text-[10px] font-bold text-center uppercase tracking-widest group-hover:bg-blue-600 group-hover:text-white transition-all">Start (Storage Mode)</div>
+                </button>
+                
+                <!-- Purple Button: Private Uplink (About:Blank) -->
+                <button id="start-private-btn" class="p-6 glass-panel btn-purple transition-all group text-left flex flex-col justify-between h-full cursor-pointer">
+                    <div>
+                        <i class="fas fa-user-secret text-3xl mb-4 group-hover:scale-110 transition-transform"></i>
+                        <div class="text-lg font-bold uppercase text-white mb-2 font-mono">Private Uplink</div>
+                        <div class="text-[10px] opacity-60 leading-relaxed font-mono uppercase">Secure about:blank mode<br>Bypasses iFrame blocks<br>Zero session tracking</div>
+                    </div>
+                    <div class="mt-8 py-3 bg-purple-500/20 border border-purple-500/50 text-purple-400 text-[10px] font-bold text-center uppercase tracking-widest group-hover:bg-purple-600 group-hover:text-white transition-all">Start (Incognito)</div>
+                </button>
+            </div>
+
+            <div id="error-msg" class="text-red-400 mt-6 text-xs hidden p-4 bg-red-950/50 border border-red-500/30 rounded-lg font-mono"></div>
+            <div class="text-[10px] font-mono text-blue-400/40 uppercase tracking-widest animate-pulse">Awaiting Authentication Command...</div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard UI -->
+    <main id="dashboard" class="relative z-10 w-full h-full p-6 sm:p-8 flex flex-col justify-between opacity-0 pointer-events-none transition-opacity duration-1000">
+        
+        <!-- AI Search Bar -->
+        <div class="absolute top-6 left-1/2 transform -translate-x-1/2 w-full max-w-lg px-4 z-50 pointer-events-auto">
+            <div class="relative group w-full">
+                <i class="fas fa-microchip absolute left-4 top-1/2 transform -translate-y-1/2 text-blue-400"></i>
+                <input type="text" id="ai-input" placeholder="Query Neural Network..." class="w-full glass-panel pl-12 pr-14 py-4 focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-white placeholder-slate-500 shadow-2xl font-mono text-xs tracking-widest">
+                <button id="direct-ai-mic-btn" class="absolute right-2 top-1/2 transform -translate-y-1/2 w-10 h-10 flex items-center justify-center bg-blue-600 hover:bg-blue-500 text-white transition-all rounded-lg shadow-lg z-10 cursor-pointer pointer-events-auto">
+                    <i class="fas fa-microphone"></i>
+                </button>
+            </div>
+            <div id="ai-response-box" class="mt-3 glass-panel p-6 text-sm leading-relaxed hidden max-h-80 overflow-y-auto custom-scroll relative bg-slate-900/95 border-blue-500/40">
+                <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+                    <span class="text-[10px] uppercase tracking-widest text-blue-400 font-bold font-mono">Neural Link Established</span>
+                    <button id="close-ai-btn" class="text-slate-500 hover:text-white cursor-pointer pointer-events-auto"><i class="fas fa-times"></i></button>
+                </div>
+                <div id="ai-response-text" class="mt-2 font-mono text-cyan-50 whitespace-pre-wrap"></div>
+            </div>
+        </div>
+
+        <!-- Top Widgets -->
+        <div class="flex justify-between items-start gap-4 pt-20 sm:pt-4">
+            <div class="glass-panel p-6 min-w-[280px]">
+                <h2 id="greeting" class="text-xs uppercase tracking-[0.3em] text-blue-400 mb-2 font-bold font-mono text-glow">Status: Active</h2>
+                <div class="flex items-baseline gap-2">
+                    <span id="time" class="text-5xl font-bold tracking-tighter">--:--</span>
+                    <span id="seconds" class="text-xl text-blue-400/60 font-mono">--</span>
+                </div>
+                <div id="date" class="text-slate-400 mt-2 text-xs font-mono tracking-widest uppercase">Syncing...</div>
+            </div>
+
+            <div class="glass-panel p-6 min-w-[280px]">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-[10px] uppercase tracking-widest text-slate-500 font-bold"><i class="fas fa-satellite mr-2 text-cyan-500"></i><span id="location-name">Detecting...</span></h3>
+                    <button id="temp-toggle" class="text-[10px] bg-blue-500/10 hover:bg-blue-500/20 px-2 py-1 rounded-md border border-blue-500/20 cursor-pointer pointer-events-auto">Toggle Units</button>
+                </div>
+                
+                <div class="flex items-center gap-6">
+                    <div id="weather-icon" class="text-5xl text-blue-400 drop-shadow-lg">
+                        <i class="fas fa-cloud-bolt"></i>
+                    </div>
+                    <div>
+                        <div class="text-4xl font-bold tracking-tighter">
+                            <span id="temperature">--</span><span class="text-2xl text-blue-400" id="temp-unit">°</span>
+                        </div>
+                        <div id="weather-desc" class="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1">Atmosphere: Stable</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Side: Zoom Control -->
+        <div class="absolute right-8 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 interactive">
+            <span class="text-[8px] font-bold text-blue-400 uppercase tracking-widest" style="writing-mode: vertical-lr; transform: rotate(180deg);">Magnify</span>
+            <div class="glass-panel p-2 flex flex-col items-center border-blue-500/30">
+                <input type="number" id="zoom-input" value="1.0" min="0.1" max="10" step="0.1" 
+                    class="bg-transparent border-none text-blue-400 text-lg font-bold font-mono w-12 text-center focus:ring-0 outline-none">
+                <div class="text-[8px] opacity-40 uppercase font-bold mt-1">Factor</div>
+            </div>
+            <div class="flex flex-col gap-1 mt-2">
+                <button id="zoom-plus" class="w-8 h-8 glass-panel flex items-center justify-center text-blue-400 hover:bg-blue-500/20 cursor-pointer interactive">+</button>
+                <button id="zoom-minus" class="w-8 h-8 glass-panel flex items-center justify-center text-blue-400 hover:bg-blue-500/20 cursor-pointer interactive">-</button>
+            </div>
+            <span class="text-[8px] opacity-50 mt-2 font-mono">0.1 - 10.0</span>
+        </div>
+
+        <!-- Bottom Widgets -->
+        <div class="flex justify-between items-end gap-4 mt-auto">
+            <div id="quote-widget" class="glass-panel p-6 max-w-sm w-full text-glow mb-40">
+                <div class="flex items-center gap-3 mb-4 text-[10px] font-bold border-b border-white/5 pb-4 uppercase tracking-widest text-blue-400">
+                    <i class="fas fa-brain"></i>
+                    <span>Neural Reflection</span>
+                </div>
+                <div>
+                    <p id="quote-text" class="text-xs text-slate-300 italic leading-relaxed">"Observing tactical variables..."</p>
+                    <p id="quote-author" class="text-[10px] text-blue-500 mt-2 font-bold text-right">- CORE</p>
+                </div>
+            </div>
+
+            <div class="glass-panel p-6 max-w-md w-full max-h-[250px] flex flex-col pointer-events-auto border-blue-500/10 shadow-blue-900/10 shadow-inner">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Global Intel Feed</h3>
+                    <span class="text-[8px] bg-red-600 px-2 py-1 rounded font-bold animate-pulse">LIVE DATA</span>
+                </div>
+                <div id="news-container" class="overflow-y-auto custom-scroll pr-2 flex-grow flex flex-col gap-3 font-mono text-[11px]">
+                    <div class="text-center text-slate-600 py-4 italic">Fetching Headlines...</div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Photo Modal -->
+    <div id="photo-modal" class="fixed inset-0 z-[110] bg-black/95 backdrop-blur-md hidden flex-col items-center justify-center p-6">
+        <div class="relative max-w-4xl w-full glass-panel border-blue-500/30 overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-white/10 flex justify-between items-center bg-slate-900/50">
+                <h3 class="text-xs font-bold uppercase text-blue-400 font-mono tracking-widest">Capture Analytics</h3>
+                <button id="close-modal-btn" class="text-slate-500 hover:text-white cursor-pointer pointer-events-auto"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="flex-grow bg-black flex items-center justify-center p-4 overflow-hidden">
+                <img id="captured-image-preview" class="max-w-full max-h-full object-contain rounded border border-white/10 shadow-2xl" src="" alt="Capture">
+            </div>
+            <div class="p-6 border-t border-white/5 flex gap-4 justify-center bg-slate-900/50">
+                <button id="analyze-modal-btn" class="px-8 py-3 bg-blue-900/30 text-blue-400 border border-blue-500/30 rounded-lg cursor-pointer text-[10px] font-bold uppercase tracking-widest hover:bg-blue-500 hover:text-white">AI Analyze</button>
+                <button id="download-modal-btn" class="px-8 py-3 bg-blue-600 text-white rounded-lg cursor-pointer text-[10px] font-bold uppercase tracking-widest hover:bg-blue-500 shadow-lg shadow-blue-900/20">Export HTML Report</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Interface Controls -->
+    <div id="photo-controls" class="absolute bottom-10 left-0 w-full px-10 flex justify-between items-center z-40 opacity-0 pointer-events-none transition-opacity duration-1000">
+        <div class="flex gap-4">
+            <button id="toggle-hud-btn" title="Toggle HUD" class="pointer-events-auto glass-panel h-14 w-14 flex items-center justify-center hover:scale-110 active:scale-90 border-blue-500/20 cursor-pointer">
+                <i class="fas fa-desktop text-blue-400"></i>
+            </button>
+            <button id="qr-scan-btn" title="QR Scanner" class="pointer-events-auto glass-panel h-14 w-14 flex items-center justify-center hover:scale-110 active:scale-90 border-blue-500/20 cursor-pointer">
+                <i class="fas fa-qrcode text-blue-400" id="qr-icon"></i>
+            </button>
+            <button id="vault-btn" title="Neural Vault" class="pointer-events-auto glass-panel h-14 w-14 hidden flex items-center justify-center hover:scale-110 active:scale-90 border-blue-500/20 cursor-pointer">
+                <i class="fas fa-folder-open text-blue-400"></i>
+            </button>
+        </div>
+        <div class="flex flex-col items-center gap-4 mb-4">
+            <div class="glass-panel p-2 flex gap-4 text-[10px] font-bold pointer-events-auto interactive">
+                <div class="flex items-center gap-2">
+                    <span class="opacity-40">FLASH</span>
+                    <button id="toggle-flash" class="w-10 h-6 bg-blue-500 rounded-full relative transition-all cursor-pointer"><div id="flash-knob" class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div></button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="opacity-40">TIMER</span>
+                    <select id="timer-select" class="bg-transparent text-blue-400 outline-none cursor-pointer">
+                        <option value="0" class="bg-slate-900 text-white">OFF</option>
+                        <option value="3" class="bg-slate-900 text-white">3S</option>
+                        <option value="5" class="bg-slate-900 text-white">5S</option>
+                        <option value="10" class="bg-slate-900 text-white">10S</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-6 items-center pointer-events-auto">
+                <button id="record-btn" title="Record Video" class="pointer-events-auto glass-panel h-16 w-16 flex items-center justify-center hover:scale-110 active:scale-90 border-red-500/20 bg-red-500/5 cursor-pointer">
+                    <i class="fas fa-circle text-2xl text-red-500" id="record-icon"></i>
+                </button>
+                <button id="capture-btn" title="Take Photo" class="pointer-events-auto glass-panel h-24 w-24 flex items-center justify-center hover:scale-110 active:scale-90 border-blue-500/40 bg-blue-500/5 cursor-pointer shadow-[0_0_30px_rgba(59,130,246,0.2)]">
+                    <i class="fas fa-camera text-3xl text-blue-400"></i>
+                </button>
+                <button id="flip-btn" title="Switch Camera" class="pointer-events-auto glass-panel h-16 w-16 flex items-center justify-center hover:scale-110 active:scale-90 border-blue-500/20 cursor-pointer">
+                    <i class="fas fa-sync-alt text-blue-400"></i>
+                </button>
+            </div>
+        </div>
+        <div class="flex gap-4">
+            <button id="fullscreen-btn" title="Toggle Fullscreen" class="pointer-events-auto glass-panel h-14 w-14 flex items-center justify-center hover:scale-110 active:scale-90 border-blue-500/20 cursor-pointer">
+                <i class="fas fa-expand text-blue-400" id="fs-icon"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Neural Vault Gallery -->
+    <div id="vault-panel" class="custom-scroll">
+        <div class="flex justify-between items-center mb-8">
+            <div>
+                <h2 class="text-2xl font-bold text-blue-400 tracking-tighter uppercase italic">Neural Vault</h2>
+                <p class="text-[10px] text-slate-500 font-mono uppercase tracking-widest">Tactical Local Archive</p>
+            </div>
+            <button id="close-vault-btn" class="glass-panel h-12 w-12 flex items-center justify-center text-slate-500 hover:text-white cursor-pointer interactive pointer-events-auto">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+        </div>
+        <div id="vault-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 overflow-y-auto pr-2 custom-scroll flex-grow">
+            <!-- Content here -->
+        </div>
+        <div id="vault-empty" class="flex-grow flex flex-col items-center justify-center opacity-20 pointer-events-none">
+            <i class="fas fa-folder-open text-6xl mb-4"></i>
+            <p class="uppercase font-bold tracking-widest text-xs">Archive Empty</p>
+        </div>
+    </div>
+
+    <canvas id="capture-canvas" class="hidden"></canvas>
+    <canvas id="qr-canvas" class="hidden"></canvas>
+
+    <script>
+        let state = {
+            storage: false,
+            stream: null,
+            facingMode: 'environment',
+            lastCapturedPhoto: null,
+            isHudVisible: true,
+            isCamVisible: true,
+            isRecording: false,
+            isQRScanning: false,
+            zoomLevel: 1.0,
+            flashEnabled: true,
+            mediaRecorder: null,
+            recordedChunks: [],
+            lastQR: null,
+            isCelsius: true
+        };
+
+        const listen = (id, event, fn) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener(event, fn);
+        };
+
+        function forceDownload(dataUrl, filename) {
+            const link = document.createElement('a');
+            link.href = dataUrl;
+            link.download = filename;
+            link.style.display = 'none';
+            document.body.appendChild(link);
+            link.click();
+            setTimeout(() => { if (link && link.parentNode) document.body.removeChild(link); }, 100);
+        }
+
+        function updateCameraTransform() {
+            const videoElement = document.getElementById('camera-feed');
+            if (!videoElement) return;
+            const flip = state.facingMode === 'user' ? -1 : 1;
+            videoElement.style.transform = `scaleX(${flip}) scale(${state.zoomLevel})`;
+        }
+
+        function launchInAboutBlank() {
+            const win = window.open('about:blank', '_blank');
+            if (!win) { alert("Popup blocked!"); return; }
+            win.name = "LUX_PRIVATE_SESSION";
+            let htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
+            win.document.open();
+            win.document.write(htmlContent);
+            win.document.close();
+        }
+
+        function initializeSystem() {
+            if (window.name === "LUX_PRIVATE_SESSION") {
+                const ss = document.getElementById('start-screen');
+                if (ss) ss.style.display = 'none'; 
+                state.storage = false;
+                actualStart();
+            }
+
+            listen('start-standard-btn', 'click', () => {
+                state.storage = true;
+                actualStart();
+            });
+
+            listen('start-private-btn', 'click', () => {
+                state.storage = false;
+                launchInAboutBlank();
+            });
+
+            const zoomInput = document.getElementById('zoom-input');
+            const applyZoom = (val) => {
+                val = parseFloat(val);
+                if (isNaN(val)) val = 1.0;
+                if (val < 0.1) val = 0.1;
+                if (val > 10.0) val = 10.0;
+                state.zoomLevel = val;
+                if (zoomInput) zoomInput.value = val.toFixed(1);
+                updateCameraTransform();
+            };
+
+            if (zoomInput) zoomInput.addEventListener('input', (e) => applyZoom(e.target.value));
+            listen('zoom-plus', 'click', () => applyZoom(state.zoomLevel + 0.5));
+            listen('zoom-minus', 'click', () => applyZoom(state.zoomLevel - 0.5));
+
+            listen('qr-scan-btn', 'click', () => {
+                state.isQRScanning = !state.isQRScanning;
+                const qrIcon = document.getElementById('qr-icon');
+                if (qrIcon) qrIcon.classList.toggle('text-green-400');
+                if (state.isQRScanning) startQRScanner();
+                else {
+                    const qrBox = document.getElementById('qr-box');
+                    if (qrBox) qrBox.style.display = 'none';
+                }
+            });
+
+            listen('vault-btn', 'click', openVault);
+            listen('close-vault-btn', 'click', closeVault);
+
+            listen('temp-toggle', 'click', () => {
+                state.isCelsius = !state.isCelsius;
+                fetchLocationAndWeather();
+            });
+
+            listen('capture-btn', 'click', initiateCapture);
+            listen('record-btn', 'click', toggleVideoRecord);
+            
+            listen('toggle-hud-btn', 'click', () => {
+                state.isHudVisible = !state.isHudVisible;
+                const dashboard = document.getElementById('dashboard');
+                if (dashboard) dashboard.style.opacity = state.isHudVisible ? '1' : '0';
+            });
+
+            listen('flip-btn', 'click', async () => {
+                state.facingMode = state.facingMode === 'user' ? 'environment' : 'user';
+                await startCamera();
+            });
+
+            listen('toggle-cam-btn', 'click', toggleCameraPrivacy);
+            listen('fullscreen-btn', 'click', toggleFullscreen);
+            listen('download-modal-btn', 'click', exportIntelAsHtml);
+            listen('analyze-modal-btn', 'click', runAIAnalysis);
+            
+            listen('close-ai-btn', 'click', () => {
+                const box = document.getElementById('ai-response-box');
+                if (box) box.classList.add('hidden');
+            });
+
+            const aiIn = document.getElementById('ai-input');
+            if (aiIn) {
+                aiIn.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && aiIn.value.trim() !== "") performAISearch(aiIn.value);
+                });
+            }
+
+            listen('close-modal-btn', 'click', () => {
+                const modal = document.getElementById('photo-modal');
+                if (modal) modal.classList.add('hidden');
+            });
+
+            listen('toggle-flash', 'click', () => {
+                state.flashEnabled = !state.flashEnabled;
+                const knob = document.getElementById('flash-knob');
+                const btn = document.getElementById('toggle-flash');
+                if (btn) btn.style.backgroundColor = state.flashEnabled ? '#3b82f6' : '#475569';
+                if (knob) knob.style.right = state.flashEnabled ? '4px' : '22px';
+            });
+
+            initClock();
+            initBattery();
+            initVoiceAssistant();
+        }
+
+        async function startCamera() {
+            if (state.stream) state.stream.getTracks().forEach(t => t.stop());
+            try {
+                state.stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: { ideal: state.facingMode }, width: 3840, height: 2160 }, 
+                    audio: true 
+                });
+                const videoElement = document.getElementById('camera-feed');
+                if (videoElement) {
+                    videoElement.srcObject = state.stream;
+                    updateCameraTransform();
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        }
+
+        async function actualStart() {
+            await startCamera();
+            const startScreen = document.getElementById('start-screen');
+            if (startScreen) startScreen.classList.add('fade-out');
+            const dashboard = document.getElementById('dashboard');
+            if (dashboard) {
+                dashboard.classList.remove('opacity-0');
+                dashboard.classList.add('pointer-events-auto');
+            }
+            const controls = document.getElementById('photo-controls');
+            if (controls) {
+                controls.classList.remove('opacity-0');
+                controls.classList.add('pointer-events-auto');
+            }
+
+            if (state.storage) {
+                const vaultBtn = document.getElementById('vault-btn');
+                if (vaultBtn) vaultBtn.classList.remove('hidden');
+            }
+
+            fetchLocationAndWeather();
+            fetchNews();
+            fetchQuote();
+        }
+
+        function initiateCapture() {
+            const timerSelect = document.getElementById('timer-select');
+            const delay = timerSelect ? parseInt(timerSelect.value) : 0;
+            const overlay = document.getElementById('countdown-overlay');
+            if (delay > 0 && overlay) {
+                overlay.style.display = 'block';
+                let timeLeft = delay;
+                overlay.textContent = timeLeft;
+                let timer = setInterval(() => {
+                    timeLeft--;
+                    overlay.textContent = timeLeft;
+                    if (timeLeft <= 0) {
+                        clearInterval(timer);
+                        overlay.style.display = 'none';
+                        executeCapture();
+                    }
+                }, 1000);
+            } else {
+                executeCapture();
+            }
+        }
+
+        function executeCapture() {
+            const video = document.getElementById('camera-feed');
+            if (!video || !video.srcObject) return;
+
+            const statusEl = document.getElementById('capture-status');
+            if (statusEl) statusEl.style.display = 'flex';
+
+            if (state.flashEnabled) {
+                const flash = document.getElementById('flash-effect');
+                if (flash) {
+                    flash.classList.replace('opacity-0', 'opacity-100');
+                    setTimeout(() => flash.classList.replace('opacity-100', 'opacity-0'), 150);
+                }
+            }
+
+            setTimeout(() => {
+                const canvas = document.getElementById('capture-canvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+                ctx.save();
+                if (state.facingMode === 'user') { ctx.translate(canvas.width, 0); ctx.scale(-1, 1); }
+                const z = parseFloat(state.zoomLevel);
+                if (z >= 1.0) {
+                    const sw = video.videoWidth / z, sh = video.videoHeight / z;
+                    ctx.drawImage(video, (video.videoWidth - sw)/2, (video.videoHeight - sh)/2, sw, sh, 0, 0, canvas.width, canvas.height);
+                } else {
+                    const dw = canvas.width * z, dh = canvas.height * z;
+                    ctx.drawImage(video, (canvas.width - dw)/2, (canvas.height - dh)/2, dw, dh);
+                }
+                ctx.restore();
+                
+                const dataUrl = canvas.toDataURL('image/png');
+                state.lastCapturedPhoto = dataUrl;
+                const preview = document.getElementById('captured-image-preview');
+                if (preview) preview.src = dataUrl;
+                const modal = document.getElementById('photo-modal');
+                if (modal) modal.classList.remove('hidden');
+                if (statusEl) statusEl.style.display = 'none';
+
+                forceDownload(dataUrl, `LUX_SNAP_${Date.now()}.png`);
+                if (state.storage) saveToVault(dataUrl, 'photo');
+            }, 500);
+        }
+
+        function saveToVault(data, type) {
+            const vault = JSON.parse(localStorage.getItem('lux_tactical_vault') || '[]');
+            vault.push({
+                id: Date.now(),
+                type: type,
+                data: data,
+                timestamp: new Date().toLocaleString()
+            });
+            localStorage.setItem('lux_tactical_vault', JSON.stringify(vault));
+        }
+
+        function openVault() {
+            const panel = document.getElementById('vault-panel');
+            const grid = document.getElementById('vault-grid');
+            const empty = document.getElementById('vault-empty');
+            if (panel) panel.style.display = 'flex';
+            
+            const vault = JSON.parse(localStorage.getItem('lux_tactical_vault') || '[]');
+            if (grid) grid.innerHTML = '';
+            
+            if (vault.length === 0) {
+                if (empty) empty.style.display = 'flex';
+            } else {
+                if (empty) empty.style.display = 'none';
+                vault.reverse().forEach(item => {
+                    const el = document.createElement('div');
+                    el.className = 'vault-item group';
+                    if (item.type === 'photo') {
+                        el.innerHTML = `
+                            <img src="${item.data}">
+                            <div class="vault-controls">
+                                <button onclick="downloadVaultItem('${item.data}', 'png')" class="text-white hover:text-blue-400 p-2"><i class="fas fa-download"></i></button>
+                                <button onclick="deleteVaultItem(${item.id})" class="text-white hover:text-red-500 p-2"><i class="fas fa-trash"></i></button>
+                            </div>
+                        `;
+                    } else if (item.type === 'video') {
+                        el.innerHTML = `
+                            <video src="${item.data}" muted loop onmouseover="this.play()" onmouseout="this.pause()"></video>
+                            <div class="vault-controls">
+                                <i class="fas fa-play absolute top-2 left-2 text-blue-400 pointer-events-none"></i>
+                                <button onclick="downloadVaultItem('${item.data}', 'webm')" class="text-white hover:text-blue-400 p-2"><i class="fas fa-download"></i></button>
+                                <button onclick="deleteVaultItem(${item.id})" class="text-white hover:text-red-500 p-2"><i class="fas fa-trash"></i></button>
+                            </div>
+                        `;
+                    }
+                    grid.appendChild(el);
+                });
+            }
+        }
+
+        window.downloadVaultItem = (data, ext) => forceDownload(data, `VAULT_LOG_${Date.now()}.${ext}`);
+        window.deleteVaultItem = (id) => {
+            let vault = JSON.parse(localStorage.getItem('lux_tactical_vault') || '[]');
+            vault = vault.filter(i => i.id !== id);
+            localStorage.setItem('lux_tactical_vault', JSON.stringify(vault));
+            openVault(); 
+        };
+
+        function closeVault() {
+            const panel = document.getElementById('vault-panel');
+            if (panel) panel.style.display = 'none';
+        }
+
+        function toggleVideoRecord() {
+            if (!state.isRecording) {
+                state.recordedChunks = [];
+                state.mediaRecorder = new MediaRecorder(state.stream);
+                state.mediaRecorder.ondataavailable = e => { if (e.data.size > 0) state.recordedChunks.push(e.data); };
+                state.mediaRecorder.onstop = () => {
+                    const blob = new Blob(state.recordedChunks, { type: 'video/webm' });
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const dataUrl = reader.result;
+                        forceDownload(dataUrl, `LUX_LOG_${Date.now()}.webm`);
+                        if (state.storage) saveToVault(dataUrl, 'video');
+                    };
+                    reader.readAsDataURL(blob);
+                };
+                state.mediaRecorder.start();
+                state.isRecording = true;
+                const btn = document.getElementById('record-btn');
+                if (btn) btn.classList.add('rec-active');
+            } else {
+                if (state.mediaRecorder) state.mediaRecorder.stop();
+                state.isRecording = false;
+                const btn = document.getElementById('record-btn');
+                if (btn) btn.classList.remove('rec-active');
+            }
+        }
+
+        function toggleCameraPrivacy() {
+            state.isCamVisible = !state.isCamVisible;
+            const video = document.getElementById('camera-feed');
+            const overlay = document.getElementById('privacy-overlay');
+            const icon = document.getElementById('cam-eye-icon');
+            if (state.isCamVisible) {
+                startCamera();
+                if (video) video.classList.remove('hidden-stream');
+                if (overlay) overlay.classList.remove('active');
+                if (icon) icon.classList.replace('fa-eye-slash', 'fa-eye');
+            } else {
+                if (state.stream) state.stream.getTracks().forEach(t => t.stop());
+                if (video) video.srcObject = null;
+                if (video) video.classList.add('hidden-stream');
+                if (overlay) overlay.classList.add('active');
+                if (icon) icon.classList.replace('fa-eye', 'fa-eye-slash');
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+            else document.exitFullscreen();
+        }
+
+        function exportIntelAsHtml() {
+            if (!state.lastCapturedPhoto) return;
+            const html = `<!DOCTYPE html><html><body style="background:#020617;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;color:white;font-family:sans-serif;"><div style="text-align:center;"><h2>LUXDiscover Intel Report</h2><img src="${state.lastCapturedPhoto}" style="max-width:90vw;border:1px solid #3b82f6;border-radius:12px;box-shadow:0 0 50px rgba(59,130,246,0.3)"><p style="margin-top:20px;opacity:0.5;font-size:10px;">TIMESTAMP: ${new Date().toLocaleString()}</p></div></body></html>`;
+            const blob = new Blob([html], { type: 'text/html' });
+            forceDownload(URL.createObjectURL(blob), `LUX_Intel_${Date.now()}.html`);
+        }
+
+        async function runAIAnalysis() {
+            const btn = document.getElementById('analyze-modal-btn');
+            if (btn) btn.textContent = "ANALYZING...";
+            try {
+                const r = await puter.ai.chat("Describe this image concisely and tactically.", state.lastCapturedPhoto);
+                const resultText = (typeof r === 'string') ? r : (r?.message?.content || r?.text || "Analysis complete.");
+                if (btn) btn.textContent = "DONE";
+                performAISearch(`ANALYSIS RESULT: ${resultText}`); 
+            } catch(e) { if (btn) btn.textContent = "FAILED"; }
+        }
+
+        function startQRScanner() {
+            if (!state.isQRScanning || !state.stream) return;
+            const qrCanvas = document.getElementById('qr-canvas');
+            const ctx = qrCanvas.getContext('2d');
+            const video = document.getElementById('camera-feed');
+            const scan = () => {
+                if (!state.isQRScanning || !video) return;
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    qrCanvas.height = video.videoHeight; qrCanvas.width = video.videoWidth;
+                    ctx.drawImage(video, 0, 0);
+                    const code = jsQR(ctx.getImageData(0, 0, qrCanvas.width, qrCanvas.height).data, qrCanvas.width, qrCanvas.height);
+                    const qrBox = document.getElementById('qr-box');
+                    if (code && qrBox) {
+                        qrBox.style.display = 'block';
+                        const vRect = video.getBoundingClientRect();
+                        qrBox.style.left = (vRect.left + code.location.topLeftCorner.x * (vRect.width / video.videoWidth)) + 'px';
+                        qrBox.style.top = (vRect.top + code.location.topLeftCorner.y * (vRect.height / video.videoHeight)) + 'px';
+                        if (code.data !== state.lastQR) { state.lastQR = code.data; performAISearch(`QR DATA DETECTED: ${code.data}`); }
+                    } else if (qrBox) qrBox.style.display = 'none';
+                }
+                requestAnimationFrame(scan);
+            };
+            scan();
+        }
+
+        async function performAISearch(q) {
+            const aiBox = document.getElementById('ai-response-box');
+            if (aiBox) aiBox.classList.remove('hidden');
+            const aiIn = document.getElementById('ai-input');
+            if (aiIn) aiIn.value = q;
+            const aiTxt = document.getElementById('ai-response-text');
+            if (aiTxt) aiTxt.innerHTML = `<span class="thinking-pulse text-blue-400 font-bold">[ACCESSING NEURAL NET...]</span>`;
+            try {
+                const r = await puter.ai.chat(q);
+                const output = (typeof r === 'string') ? r : (r?.message?.content || r?.text || JSON.stringify(r));
+                if (aiTxt) aiTxt.innerHTML = output;
+            } catch(e) { if (aiTxt) aiTxt.innerHTML = `<span class="text-red-500">[ERROR] Connection Timeout.</span>`; }
+        }
+
+        function initVoiceAssistant() {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) return;
+            const rec = new SR();
+            const micBtn = document.getElementById('direct-ai-mic-btn');
+            if (micBtn) {
+                rec.onstart = () => { micBtn.classList.add('mic-listening'); };
+                rec.onresult = (e) => performAISearch(e.results[0][0].transcript);
+                rec.onend = () => { btn.classList.remove('mic-listening'); };
+                micBtn.onclick = () => { try { rec.start(); } catch(e) {} };
+            }
+        }
+
+        function initClock() {
+            setInterval(() => {
+                const now = new Date();
+                const timeEl = document.getElementById('time');
+                if (timeEl) timeEl.textContent = `${now.getHours() % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')}`;
+                const secsEl = document.getElementById('seconds');
+                if (secsEl) secsEl.textContent = String(now.getSeconds()).padStart(2, '0');
+                const dateEl = document.getElementById('date');
+                if (dateEl) dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }).toUpperCase();
+            }, 1000);
+        }
+
+        async function fetchLocationAndWeather() {
+            try {
+                const res = await fetch('https://get.geojs.io/v1/ip/geo.json');
+                const data = await res.json();
+                const locEl = document.getElementById('location-name');
+                if (locEl) locEl.textContent = data.city || "Santa Clara";
+                state.isCelsius = (data.country_code !== "US");
+                fetch(`https://api.open-meteo.com/v1/forecast?latitude=${data.latitude}&longitude=${data.longitude}&current=temperature_2m,weather_code`).then(r => r.json()).then(d => {
+                    let temp = d.current.temperature_2m;
+                    if (!state.isCelsius) temp = (temp * 9/5) + 32;
+                    const tempEl = document.getElementById('temperature');
+                    if (tempEl) tempEl.textContent = Math.round(temp);
+                    const unitEl = document.getElementById('temp-unit');
+                    if (unitEl) unitEl.textContent = state.isCelsius ? "°C" : "°F";
+                });
+            } catch (e) {}
+        }
+
+        async function fetchNews() {
+            try {
+                const res = await fetch('https://api.rss2json.com/v1/api.json?rss_url=http%3A%2F%2Ffeeds.bbci.co.uk%2Fnews%2Fworld%2Frss.xml');
+                const data = await res.json();
+                const container = document.getElementById('news-container');
+                if (container) {
+                    container.innerHTML = '';
+                    data.items.slice(0, 4).forEach(item => {
+                        const card = document.createElement('div');
+                        card.className = "bg-white/5 p-3 rounded border border-white/5";
+                        card.innerHTML = `<h4 class="font-bold text-blue-200 uppercase text-[9px]">${item.title}</h4>`;
+                        container.appendChild(card);
+                    });
+                }
+            } catch (e) {}
+        }
+
+        async function fetchQuote() {
+            try {
+                const res = await fetch('https://dummyjson.com/quotes/random');
+                const data = await res.json();
+                const qEl = document.getElementById('quote-text');
+                if (qEl) qEl.textContent = `"${data.quote}"`;
+                const aEl = document.getElementById('quote-author');
+                if (aEl) aEl.textContent = `- ${data.author}`;
+            } catch (e) {}
+        }
+
+        function initBattery() {
+            if ('getBattery' in navigator) {
+                navigator.getBattery().then(b => {
+                    const el = document.getElementById('battery-level');
+                    const up = () => { if (el) el.textContent = `Power: ${Math.round(b.level * 100)}% ${b.charging ? '[Active]' : ''}`; };
+                    up(); b.onlevelchange = up; b.onchargingchange = up;
+                });
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', initializeSystem);
+    </script>
+</body>
+</html>
