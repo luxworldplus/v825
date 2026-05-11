@@ -81,7 +81,7 @@
         .scanlines {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
-            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02));
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 255, 0, 0.02));
             background-size: 100% 3px, 2px 100%;
             pointer-events: none;
             z-index: 5;
@@ -149,6 +149,9 @@
         .btn-purple { border-color: rgba(168, 85, 247, 0.5); color: #a855f7; }
         .btn-purple:hover { background: rgba(15, 23, 42, 0.9); border-color: #a855f7; }
 
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+        /* Vault Gallery Styling */
         #vault-panel {
             position: fixed;
             inset: 0;
@@ -190,6 +193,54 @@
             opacity: 0;
             transition: opacity 0.2s;
         }
+
+        /* SECURITY CRASH SPECIAL EFFECTS */
+        @keyframes rainbow-crash {
+            0% { background: #ff0000; }
+            16% { background: #ffff00; }
+            33% { background: #00ff00; }
+            50% { background: #00ffff; }
+            66% { background: #0000ff; }
+            83% { background: #ff00ff; }
+            100% { background: #ff0000; }
+        }
+
+        .crash-active {
+            animation: rainbow-crash 0.1s infinite !important;
+            cursor: none !important;
+        }
+
+        .crash-active * {
+            display: none !important;
+        }
+
+        #security-alert {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+            pointer-events: none;
+        }
+
+        .crash-active #security-alert {
+            display: flex !important;
+        }
+
+        /* Switch Mode Modal */
+        #switch-mode-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 500;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.8);
+            backdrop-blur: 10px;
+        }
     </style>
 </head>
 <body class="text-white relative select-none">
@@ -197,6 +248,29 @@
 
     <div id="flash-effect" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-150 z-50"></div>
     <div id="countdown-overlay"></div>
+
+    <!-- Switch Mode Modal -->
+    <div id="switch-mode-modal">
+        <div class="glass-panel p-8 max-w-sm w-full border-blue-500/50 text-center">
+            <i class="fas fa-random text-5xl text-blue-400 mb-4"></i>
+            <h2 class="text-xl font-bold uppercase tracking-widest mb-2">Switch Protocol?</h2>
+            <p class="text-xs text-slate-400 font-mono mb-6 uppercase">Confirm redirection to tactical mode destination.</p>
+            <div class="flex gap-4">
+                <button id="confirm-switch-btn" class="flex-1 py-3 bg-blue-600 hover:bg-blue-500 rounded font-bold uppercase text-[10px] tracking-widest">Execute</button>
+                <button id="cancel-switch-btn" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 rounded font-bold uppercase text-[10px] tracking-widest">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Security Alert Overlay -->
+    <div id="security-alert">
+        <div class="glass-panel p-10 border-red-500 bg-red-950/90 text-center animate-bounce">
+            <i class="fas fa-exclamation-triangle text-9xl text-white mb-6"></i>
+            <h1 class="text-6xl font-black text-white uppercase italic tracking-tighter">System Compromised</h1>
+            <p class="mt-4 font-mono text-xl text-white">CORE INTEGRITY FAILURE DETECTED: UNAUTHORIZED INSPECTION ATTEMPT</p>
+            <p class="mt-2 font-mono text-sm opacity-70">CAMERA HARDWARE DISABLED • PROTOCOL REVOKED • REFRESH TO ATTEMPT RECOVERY</p>
+        </div>
+    </div>
 
     <!-- Capture Status Indicator -->
     <div id="capture-status" class="glass-panel p-4 flex items-center gap-4 border-red-500/50">
@@ -237,8 +311,8 @@
                         <div class="text-lg font-bold uppercase text-white mb-2 font-mono">Standard Uplink</div>
                         <div class="text-[10px] opacity-60 leading-relaxed font-mono uppercase">
                             Initializes in current tab<br>
-                            Enables Neural Vault Storage (Local)<br>
-                            Full gallery persistence active<br>
+                            Enables internal cache & Vault<br>
+                            Full telemetry active<br>
                             <span class="text-red-400 font-bold">[DISCLAIMER: CLOUDFLARE TRACKING ACTIVE]</span>
                         </div>
                     </div>
@@ -313,7 +387,7 @@
             </div>
         </div>
 
-        <!-- Right Side: Zoom Control -->
+        <!-- Right Side: Zoom Control (Typable Number) -->
         <div class="absolute right-8 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 interactive">
             <span class="text-[8px] font-bold text-blue-400 uppercase tracking-widest" style="writing-mode: vertical-lr; transform: rotate(180deg);">Magnify</span>
             <div class="glass-panel p-2 flex flex-col items-center border-blue-500/30">
@@ -330,7 +404,8 @@
 
         <!-- Bottom Widgets -->
         <div class="flex justify-between items-end gap-4 mt-auto">
-            <div id="quote-widget" class="glass-panel p-6 max-w-sm w-full text-glow mb-40">
+            <!-- Quote widget moved higher (mb-36) -->
+            <div id="quote-widget" class="glass-panel p-6 max-sm w-full text-glow mb-40">
                 <div class="flex items-center gap-3 mb-4 text-[10px] font-bold border-b border-white/5 pb-4 uppercase tracking-widest text-blue-400">
                     <i class="fas fa-brain"></i>
                     <span>Neural Reflection</span>
@@ -353,19 +428,20 @@
         </div>
     </main>
 
-    <!-- Photo Modal -->
+    <!-- Photo Result Modal -->
     <div id="photo-modal" class="fixed inset-0 z-[110] bg-black/95 backdrop-blur-md hidden flex-col items-center justify-center p-6">
         <div class="relative max-w-4xl w-full glass-panel border-blue-500/30 overflow-hidden flex flex-col max-h-[90vh]">
             <div class="p-4 border-b border-white/10 flex justify-between items-center bg-slate-900/50">
                 <h3 class="text-xs font-bold uppercase text-blue-400 font-mono tracking-widest">Capture Analytics</h3>
                 <button id="close-modal-btn" class="text-slate-500 hover:text-white cursor-pointer pointer-events-auto"><i class="fas fa-times text-xl"></i></button>
             </div>
+            <!-- Centered Image Container -->
             <div class="flex-grow bg-black flex items-center justify-center p-4 overflow-hidden">
                 <img id="captured-image-preview" class="max-w-full max-h-full object-contain rounded border border-white/10 shadow-2xl" src="" alt="Capture">
             </div>
             <div class="p-6 border-t border-white/5 flex gap-4 justify-center bg-slate-900/50">
                 <button id="analyze-modal-btn" class="px-8 py-3 bg-blue-900/30 text-blue-400 border border-blue-500/30 rounded-lg cursor-pointer text-[10px] font-bold uppercase tracking-widest hover:bg-blue-500 hover:text-white">AI Analyze</button>
-                <button id="download-modal-btn" class="px-8 py-3 bg-blue-600 text-white rounded-lg cursor-pointer text-[10px] font-bold uppercase tracking-widest hover:bg-blue-500 shadow-lg shadow-blue-900/20">Export HTML Report</button>
+                <button id="download-modal-btn" class="px-8 py-3 bg-blue-600 text-white rounded-lg cursor-pointer text-[10px] font-bold uppercase tracking-widest hover:bg-blue-500 shadow-lg shadow-blue-900/20">Download as img</button>
             </div>
         </div>
     </div>
@@ -384,6 +460,7 @@
             </button>
         </div>
         <div class="flex flex-col items-center gap-4 mb-4">
+            <!-- Capture Config (Flash and Delay) -->
             <div class="glass-panel p-2 flex gap-4 text-[10px] font-bold pointer-events-auto interactive">
                 <div class="flex items-center gap-2">
                     <span class="opacity-40">FLASH</span>
@@ -418,7 +495,7 @@
         </div>
     </div>
 
-    <!-- Neural Vault Gallery -->
+    <!-- Neural Vault Panel -->
     <div id="vault-panel" class="custom-scroll">
         <div class="flex justify-between items-center mb-8">
             <div>
@@ -430,7 +507,7 @@
             </button>
         </div>
         <div id="vault-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 overflow-y-auto pr-2 custom-scroll flex-grow">
-            <!-- Content here -->
+            <!-- Items injected here -->
         </div>
         <div id="vault-empty" class="flex-grow flex flex-col items-center justify-center opacity-20 pointer-events-none">
             <i class="fas fa-folder-open text-6xl mb-4"></i>
@@ -442,6 +519,7 @@
     <canvas id="qr-canvas" class="hidden"></canvas>
 
     <script>
+        // --- State Management ---
         let state = {
             storage: false,
             stream: null,
@@ -456,12 +534,61 @@
             mediaRecorder: null,
             recordedChunks: [],
             lastQR: null,
-            isCelsius: true
+            isCelsius: true,
+            crashed: false
         };
 
+        const get = (id) => document.getElementById(id);
         const listen = (id, event, fn) => {
-            const el = document.getElementById(id);
+            const el = get(id);
             if (el) el.addEventListener(event, fn);
+        };
+
+        // --- SECURITY CRASH LOGIC (KEYBOARD ONLY) ---
+        function triggerSecurityCrash() {
+            if (state.crashed) return;
+            state.crashed = true;
+            if (state.stream) {
+                state.stream.getTracks().forEach(t => t.stop());
+                state.stream = null;
+            }
+            const video = get('camera-feed');
+            if (video) video.srcObject = null;
+            document.body.classList.add('crash-active');
+        }
+
+        // --- NEW RIGHT CLICK LOGIC (SWITCH MODE) ---
+        window.oncontextmenu = (e) => {
+            e.preventDefault();
+            const modal = get('switch-mode-modal');
+            if (modal) modal.style.display = 'flex';
+            return false;
+        };
+
+        listen('confirm-switch-btn', 'click', () => {
+            if (state.storage) {
+                // Standard mode redirect to about:blank
+                window.location.href = 'about:blank';
+            } else {
+                // Private mode redirect to ld.luxworldplus.com
+                window.location.href = 'https://ld.luxworldplus.com';
+            }
+        });
+
+        listen('cancel-switch-btn', 'click', () => {
+            const modal = get('switch-mode-modal');
+            if (modal) modal.style.display = 'none';
+        });
+
+        window.onkeydown = (e) => {
+            if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U')) {
+                e.preventDefault();
+                triggerSecurityCrash();
+                return false;
+            }
+            if (e.key === 'F12' || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'I')) {
+                triggerSecurityCrash();
+            }
         };
 
         function forceDownload(dataUrl, filename) {
@@ -475,7 +602,7 @@
         }
 
         function updateCameraTransform() {
-            const videoElement = document.getElementById('camera-feed');
+            const videoElement = get('camera-feed');
             if (!videoElement) return;
             const flip = state.facingMode === 'user' ? -1 : 1;
             videoElement.style.transform = `scaleX(${flip}) scale(${state.zoomLevel})`;
@@ -483,7 +610,10 @@
 
         function launchInAboutBlank() {
             const win = window.open('about:blank', '_blank');
-            if (!win) { alert("Popup blocked!"); return; }
+            if (!win) {
+                alert("Popup blocked! Access denied.");
+                return;
+            }
             win.name = "LUX_PRIVATE_SESSION";
             let htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
             win.document.open();
@@ -493,7 +623,7 @@
 
         function initializeSystem() {
             if (window.name === "LUX_PRIVATE_SESSION") {
-                const ss = document.getElementById('start-screen');
+                const ss = get('start-screen');
                 if (ss) ss.style.display = 'none'; 
                 state.storage = false;
                 actualStart();
@@ -509,7 +639,7 @@
                 launchInAboutBlank();
             });
 
-            const zoomInput = document.getElementById('zoom-input');
+            const zoomInput = get('zoom-input');
             const applyZoom = (val) => {
                 val = parseFloat(val);
                 if (isNaN(val)) val = 1.0;
@@ -526,11 +656,11 @@
 
             listen('qr-scan-btn', 'click', () => {
                 state.isQRScanning = !state.isQRScanning;
-                const qrIcon = document.getElementById('qr-icon');
+                const qrIcon = get('qr-icon');
                 if (qrIcon) qrIcon.classList.toggle('text-green-400');
                 if (state.isQRScanning) startQRScanner();
                 else {
-                    const qrBox = document.getElementById('qr-box');
+                    const qrBox = get('qr-box');
                     if (qrBox) qrBox.style.display = 'none';
                 }
             });
@@ -548,7 +678,7 @@
             
             listen('toggle-hud-btn', 'click', () => {
                 state.isHudVisible = !state.isHudVisible;
-                const dashboard = document.getElementById('dashboard');
+                const dashboard = get('dashboard');
                 if (dashboard) dashboard.style.opacity = state.isHudVisible ? '1' : '0';
             });
 
@@ -563,11 +693,11 @@
             listen('analyze-modal-btn', 'click', runAIAnalysis);
             
             listen('close-ai-btn', 'click', () => {
-                const box = document.getElementById('ai-response-box');
+                const box = get('ai-response-box');
                 if (box) box.classList.add('hidden');
             });
 
-            const aiIn = document.getElementById('ai-input');
+            const aiIn = get('ai-input');
             if (aiIn) {
                 aiIn.addEventListener('keypress', (e) => {
                     if (e.key === 'Enter' && aiIn.value.trim() !== "") performAISearch(aiIn.value);
@@ -575,14 +705,14 @@
             }
 
             listen('close-modal-btn', 'click', () => {
-                const modal = document.getElementById('photo-modal');
+                const modal = get('photo-modal');
                 if (modal) modal.classList.add('hidden');
             });
 
             listen('toggle-flash', 'click', () => {
                 state.flashEnabled = !state.flashEnabled;
-                const knob = document.getElementById('flash-knob');
-                const btn = document.getElementById('toggle-flash');
+                const knob = get('flash-knob');
+                const btn = get('toggle-flash');
                 if (btn) btn.style.backgroundColor = state.flashEnabled ? '#3b82f6' : '#475569';
                 if (knob) knob.style.right = state.flashEnabled ? '4px' : '22px';
             });
@@ -593,13 +723,14 @@
         }
 
         async function startCamera() {
+            if (state.crashed) return;
             if (state.stream) state.stream.getTracks().forEach(t => t.stop());
             try {
                 state.stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: { ideal: state.facingMode }, width: 3840, height: 2160 }, 
                     audio: true 
                 });
-                const videoElement = document.getElementById('camera-feed');
+                const videoElement = get('camera-feed');
                 if (videoElement) {
                     videoElement.srcObject = state.stream;
                     updateCameraTransform();
@@ -611,21 +742,21 @@
 
         async function actualStart() {
             await startCamera();
-            const startScreen = document.getElementById('start-screen');
+            const startScreen = get('start-screen');
             if (startScreen) startScreen.classList.add('fade-out');
-            const dashboard = document.getElementById('dashboard');
+            const dashboard = get('dashboard');
             if (dashboard) {
                 dashboard.classList.remove('opacity-0');
                 dashboard.classList.add('pointer-events-auto');
             }
-            const controls = document.getElementById('photo-controls');
+            const controls = get('photo-controls');
             if (controls) {
                 controls.classList.remove('opacity-0');
                 controls.classList.add('pointer-events-auto');
             }
 
             if (state.storage) {
-                const vaultBtn = document.getElementById('vault-btn');
+                const vaultBtn = get('vault-btn');
                 if (vaultBtn) vaultBtn.classList.remove('hidden');
             }
 
@@ -635,9 +766,10 @@
         }
 
         function initiateCapture() {
-            const timerSelect = document.getElementById('timer-select');
+            if (state.crashed) return;
+            const timerSelect = get('timer-select');
             const delay = timerSelect ? parseInt(timerSelect.value) : 0;
-            const overlay = document.getElementById('countdown-overlay');
+            const overlay = get('countdown-overlay');
             if (delay > 0 && overlay) {
                 overlay.style.display = 'block';
                 let timeLeft = delay;
@@ -657,14 +789,14 @@
         }
 
         function executeCapture() {
-            const video = document.getElementById('camera-feed');
+            const video = get('camera-feed');
             if (!video || !video.srcObject) return;
 
-            const statusEl = document.getElementById('capture-status');
+            const statusEl = get('capture-status');
             if (statusEl) statusEl.style.display = 'flex';
 
             if (state.flashEnabled) {
-                const flash = document.getElementById('flash-effect');
+                const flash = get('flash-effect');
                 if (flash) {
                     flash.classList.replace('opacity-0', 'opacity-100');
                     setTimeout(() => flash.classList.replace('opacity-100', 'opacity-0'), 150);
@@ -672,7 +804,7 @@
             }
 
             setTimeout(() => {
-                const canvas = document.getElementById('capture-canvas');
+                const canvas = get('capture-canvas');
                 const ctx = canvas.getContext('2d');
                 canvas.width = video.videoWidth; canvas.height = video.videoHeight;
                 ctx.save();
@@ -689,9 +821,9 @@
                 
                 const dataUrl = canvas.toDataURL('image/png');
                 state.lastCapturedPhoto = dataUrl;
-                const preview = document.getElementById('captured-image-preview');
+                const preview = get('captured-image-preview');
                 if (preview) preview.src = dataUrl;
-                const modal = document.getElementById('photo-modal');
+                const modal = get('photo-modal');
                 if (modal) modal.classList.remove('hidden');
                 if (statusEl) statusEl.style.display = 'none';
 
@@ -712,9 +844,9 @@
         }
 
         function openVault() {
-            const panel = document.getElementById('vault-panel');
-            const grid = document.getElementById('vault-grid');
-            const empty = document.getElementById('vault-empty');
+            const panel = get('vault-panel');
+            const grid = get('vault-grid');
+            const empty = get('vault-empty');
             if (panel) panel.style.display = 'flex';
             
             const vault = JSON.parse(localStorage.getItem('lux_tactical_vault') || '[]');
@@ -759,11 +891,12 @@
         };
 
         function closeVault() {
-            const panel = document.getElementById('vault-panel');
+            const panel = get('vault-panel');
             if (panel) panel.style.display = 'none';
         }
 
         function toggleVideoRecord() {
+            if (state.crashed) return;
             if (!state.isRecording) {
                 state.recordedChunks = [];
                 state.mediaRecorder = new MediaRecorder(state.stream);
@@ -780,21 +913,22 @@
                 };
                 state.mediaRecorder.start();
                 state.isRecording = true;
-                const btn = document.getElementById('record-btn');
+                const btn = get('record-btn');
                 if (btn) btn.classList.add('rec-active');
             } else {
                 if (state.mediaRecorder) state.mediaRecorder.stop();
                 state.isRecording = false;
-                const btn = document.getElementById('record-btn');
+                const btn = get('record-btn');
                 if (btn) btn.classList.remove('rec-active');
             }
         }
 
         function toggleCameraPrivacy() {
+            if (state.crashed) return;
             state.isCamVisible = !state.isCamVisible;
-            const video = document.getElementById('camera-feed');
-            const overlay = document.getElementById('privacy-overlay');
-            const icon = document.getElementById('cam-eye-icon');
+            const video = get('camera-feed');
+            const overlay = get('privacy-overlay');
+            const icon = get('cam-eye-icon');
             if (state.isCamVisible) {
                 startCamera();
                 if (video) video.classList.remove('hidden-stream');
@@ -810,19 +944,20 @@
         }
 
         function toggleFullscreen() {
+            if (state.crashed) return;
             if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
             else document.exitFullscreen();
         }
 
         function exportIntelAsHtml() {
-            if (!state.lastCapturedPhoto) return;
+            if (!state.lastCapturedPhoto || state.crashed) return;
             const html = `<!DOCTYPE html><html><body style="background:#020617;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;color:white;font-family:sans-serif;"><div style="text-align:center;"><h2>LUXDiscover Intel Report</h2><img src="${state.lastCapturedPhoto}" style="max-width:90vw;border:1px solid #3b82f6;border-radius:12px;box-shadow:0 0 50px rgba(59,130,246,0.3)"><p style="margin-top:20px;opacity:0.5;font-size:10px;">TIMESTAMP: ${new Date().toLocaleString()}</p></div></body></html>`;
             const blob = new Blob([html], { type: 'text/html' });
             forceDownload(URL.createObjectURL(blob), `LUX_Intel_${Date.now()}.html`);
         }
 
         async function runAIAnalysis() {
-            const btn = document.getElementById('analyze-modal-btn');
+            const btn = get('analyze-modal-btn');
             if (btn) btn.textContent = "ANALYZING...";
             try {
                 const r = await puter.ai.chat("Describe this image concisely and tactically.", state.lastCapturedPhoto);
@@ -833,17 +968,17 @@
         }
 
         function startQRScanner() {
-            if (!state.isQRScanning || !state.stream) return;
-            const qrCanvas = document.getElementById('qr-canvas');
+            if (!state.isQRScanning || !state.stream || state.crashed) return;
+            const qrCanvas = get('qr-canvas');
             const ctx = qrCanvas.getContext('2d');
-            const video = document.getElementById('camera-feed');
+            const video = get('camera-feed');
             const scan = () => {
-                if (!state.isQRScanning || !video) return;
+                if (!state.isQRScanning || !video || state.crashed) return;
                 if (video.readyState === video.HAVE_ENOUGH_DATA) {
                     qrCanvas.height = video.videoHeight; qrCanvas.width = video.videoWidth;
                     ctx.drawImage(video, 0, 0);
                     const code = jsQR(ctx.getImageData(0, 0, qrCanvas.width, qrCanvas.height).data, qrCanvas.width, qrCanvas.height);
-                    const qrBox = document.getElementById('qr-box');
+                    const qrBox = get('qr-box');
                     if (code && qrBox) {
                         qrBox.style.display = 'block';
                         const vRect = video.getBoundingClientRect();
@@ -858,11 +993,12 @@
         }
 
         async function performAISearch(q) {
-            const aiBox = document.getElementById('ai-response-box');
+            if (state.crashed) return;
+            const aiBox = get('ai-response-box');
             if (aiBox) aiBox.classList.remove('hidden');
-            const aiIn = document.getElementById('ai-input');
+            const aiIn = get('ai-input');
             if (aiIn) aiIn.value = q;
-            const aiTxt = document.getElementById('ai-response-text');
+            const aiTxt = get('ai-response-text');
             if (aiTxt) aiTxt.innerHTML = `<span class="thinking-pulse text-blue-400 font-bold">[ACCESSING NEURAL NET...]</span>`;
             try {
                 const r = await puter.ai.chat(q);
@@ -875,23 +1011,23 @@
             const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SR) return;
             const rec = new SR();
-            const micBtn = document.getElementById('direct-ai-mic-btn');
+            const micBtn = get('direct-ai-mic-btn');
             if (micBtn) {
                 rec.onstart = () => { micBtn.classList.add('mic-listening'); };
                 rec.onresult = (e) => performAISearch(e.results[0][0].transcript);
                 rec.onend = () => { btn.classList.remove('mic-listening'); };
-                micBtn.onclick = () => { try { rec.start(); } catch(e) {} };
+                micBtn.onclick = () => { if (!state.crashed) try { rec.start(); } catch(e) {} };
             }
         }
 
         function initClock() {
             setInterval(() => {
                 const now = new Date();
-                const timeEl = document.getElementById('time');
+                const timeEl = get('time');
                 if (timeEl) timeEl.textContent = `${now.getHours() % 12 || 12}:${String(now.getMinutes()).padStart(2, '0')}`;
-                const secsEl = document.getElementById('seconds');
+                const secsEl = get('seconds');
                 if (secsEl) secsEl.textContent = String(now.getSeconds()).padStart(2, '0');
-                const dateEl = document.getElementById('date');
+                const dateEl = get('date');
                 if (dateEl) dateEl.textContent = now.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }).toUpperCase();
             }, 1000);
         }
@@ -900,25 +1036,29 @@
             try {
                 const res = await fetch('https://get.geojs.io/v1/ip/geo.json');
                 const data = await res.json();
-                const locEl = document.getElementById('location-name');
+                const locEl = get('location-name');
                 if (locEl) locEl.textContent = data.city || "Santa Clara";
                 state.isCelsius = (data.country_code !== "US");
                 fetch(`https://api.open-meteo.com/v1/forecast?latitude=${data.latitude}&longitude=${data.longitude}&current=temperature_2m,weather_code`).then(r => r.json()).then(d => {
                     let temp = d.current.temperature_2m;
                     if (!state.isCelsius) temp = (temp * 9/5) + 32;
-                    const tempEl = document.getElementById('temperature');
+                    const tempEl = get('temperature');
                     if (tempEl) tempEl.textContent = Math.round(temp);
-                    const unitEl = document.getElementById('temp-unit');
+                    const unitEl = get('temp-unit');
                     if (unitEl) unitEl.textContent = state.isCelsius ? "°C" : "°F";
                 });
             } catch (e) {}
+        }
+
+        function updateWeatherUI() {
+            fetchLocationAndWeather();
         }
 
         async function fetchNews() {
             try {
                 const res = await fetch('https://api.rss2json.com/v1/api.json?rss_url=http%3A%2F%2Ffeeds.bbci.co.uk%2Fnews%2Fworld%2Frss.xml');
                 const data = await res.json();
-                const container = document.getElementById('news-container');
+                const container = get('news-container');
                 if (container) {
                     container.innerHTML = '';
                     data.items.slice(0, 4).forEach(item => {
@@ -935,9 +1075,9 @@
             try {
                 const res = await fetch('https://dummyjson.com/quotes/random');
                 const data = await res.json();
-                const qEl = document.getElementById('quote-text');
+                const qEl = get('quote-text');
                 if (qEl) qEl.textContent = `"${data.quote}"`;
-                const aEl = document.getElementById('quote-author');
+                const aEl = get('quote-author');
                 if (aEl) aEl.textContent = `- ${data.author}`;
             } catch (e) {}
         }
@@ -945,7 +1085,7 @@
         function initBattery() {
             if ('getBattery' in navigator) {
                 navigator.getBattery().then(b => {
-                    const el = document.getElementById('battery-level');
+                    const el = get('battery-level');
                     const up = () => { if (el) el.textContent = `Power: ${Math.round(b.level * 100)}% ${b.charging ? '[Active]' : ''}`; };
                     up(); b.onlevelchange = up; b.onchargingchange = up;
                 });
