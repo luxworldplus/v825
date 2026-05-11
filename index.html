@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LUXDiscover - Tactical Interface</title>
+    <!-- Dynamic Favicon Link -->
+    <link id="favicon" rel="icon" type="image/svg+xml" href="">
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome for Icons -->
@@ -145,9 +147,9 @@
         }
 
         .btn-blue { border-color: rgba(59, 130, 246, 0.5); color: #3b82f6; }
-        .btn-blue:hover { background: rgba(15, 23, 42, 0.9); border-color: #3b82f6; }
+        .btn-blue:hover { background: rgba(15, 23, 42, 0.85); border-color: #3b82f6; }
         .btn-purple { border-color: rgba(168, 85, 247, 0.5); color: #a855f7; }
-        .btn-purple:hover { background: rgba(15, 23, 42, 0.9); border-color: #a855f7; }
+        .btn-purple:hover { background: rgba(15, 23, 42, 0.85); border-color: #a855f7; }
 
         input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
@@ -544,6 +546,15 @@
             if (el) el.addEventListener(event, fn);
         };
 
+        // Favicon URLs (SVG Lens)
+        const ICON_BLUE = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' stroke='%233b82f6' stroke-width='10' fill='none'/><circle cx='50' cy='50' r='10' fill='%233b82f6'/></svg>`;
+        const ICON_PURPLE = `data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='45' stroke='%23a855f7' stroke-width='10' fill='none'/><circle cx='50' cy='50' r='10' fill='%23a855f7'/></svg>`;
+
+        function updateFavicon(color) {
+            const link = get('favicon');
+            if (link) link.href = (color === 'purple') ? ICON_PURPLE : ICON_BLUE;
+        }
+
         // --- SECURITY CRASH LOGIC (KEYBOARD ONLY) ---
         function triggerSecurityCrash() {
             if (state.crashed) return;
@@ -557,7 +568,7 @@
             document.body.classList.add('crash-active');
         }
 
-        // --- NEW RIGHT CLICK LOGIC (SWITCH MODE) ---
+        // --- RIGHT CLICK LOGIC (SWITCH MODE) ---
         window.oncontextmenu = (e) => {
             e.preventDefault();
             const modal = get('switch-mode-modal');
@@ -567,10 +578,10 @@
 
         listen('confirm-switch-btn', 'click', () => {
             if (state.storage) {
-                // Standard mode redirect to about:blank
+                // From Standard Mode: Redirect to about:blank
                 window.location.href = 'about:blank';
             } else {
-                // Private mode redirect to ld.luxworldplus.com
+                // From Private Mode: Redirect to ld.luxworldplus.com
                 window.location.href = 'https://ld.luxworldplus.com';
             }
         });
@@ -622,15 +633,20 @@
         }
 
         function initializeSystem() {
+            // Check for automated entry immediately
             if (window.name === "LUX_PRIVATE_SESSION") {
                 const ss = get('start-screen');
                 if (ss) ss.style.display = 'none'; 
                 state.storage = false;
+                updateFavicon('purple');
                 actualStart();
+            } else {
+                updateFavicon('blue');
             }
 
             listen('start-standard-btn', 'click', () => {
                 state.storage = true;
+                updateFavicon('blue');
                 actualStart();
             });
 
@@ -978,7 +994,7 @@
                     qrCanvas.height = video.videoHeight; qrCanvas.width = video.videoWidth;
                     ctx.drawImage(video, 0, 0);
                     const code = jsQR(ctx.getImageData(0, 0, qrCanvas.width, qrCanvas.height).data, qrCanvas.width, qrCanvas.height);
-                    const qrBox = get('qr-box');
+                    const qrBox = document.getElementById('qr-box');
                     if (code && qrBox) {
                         qrBox.style.display = 'block';
                         const vRect = video.getBoundingClientRect();
